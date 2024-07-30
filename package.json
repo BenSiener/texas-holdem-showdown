@@ -1,0 +1,18 @@
+{
+  "name": "texas-holdem-showdown",
+  "version": "1.0.0",
+  "description": "A Teaxs Hold'Em Web Game",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "texas-holdem-showdown"
+  },
+  "keywords": [
+    "texas"
+  ],
+  "author": "BenSiener",
+  "license": "ISC"
+}
