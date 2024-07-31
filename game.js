@@ -167,6 +167,7 @@ function initGame() {
   const chatBox = document.getElementById('chat');
   const potElement = document.getElementById('pot');
   let pot = 0;
+  let round = 0; // Add round variable to track the current round
 
   function updateChat(message) {
     chatBox.innerHTML += `<p>${message}</p>`;
@@ -223,6 +224,17 @@ function initGame() {
     bettingRound();
   }
 
+  function drawCommunityCards() {
+    round++;
+    if (round === 1) {
+      drawFlop();
+    } else if (round === 2) {
+      drawTurn();
+    } else if (round === 3) {
+      drawRiver();
+    }
+  }
+
   function bettingRound() {
     // Example logic: Bots bet randomly within a reasonable range
     const currentBet = Math.max(player.currentBet, bot1.currentBet, bot2.currentBet);
@@ -264,7 +276,7 @@ function initGame() {
       updateChat(`${player.name} bets $${betAmount}.`);
       botBet(bot1, betAmount);
       botBet(bot2, betAmount);
-      drawFlop();
+      drawCommunityCards(); // Draw community cards
     } catch (error) {
       alert(error.message);
     }
@@ -281,7 +293,7 @@ function initGame() {
         updateChat(`${player.name} calls with $${callAmount}.`);
         botCall(bot1, currentBet);
         botCall(bot2, currentBet);
-        drawTurn();
+        drawCommunityCards(); // Draw community cards
       } catch (error) {
         alert(error.message);
       }
@@ -294,7 +306,7 @@ function initGame() {
     updateChat(`${player.name} passes.`);
     botPass(bot1);
     botPass(bot2);
-    drawRiver();
+    drawCommunityCards(); // Draw community cards
   });
 
   document.getElementById('fold-btn').addEventListener('click', () => {
@@ -308,3 +320,4 @@ function initGame() {
 }
 
 window.initGame = initGame;
+
