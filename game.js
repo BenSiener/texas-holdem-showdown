@@ -135,66 +135,6 @@ function compareHands(hand1, hand2) {
   return rank2.highCard - rank1.highCard;
 }
 
-function rankHand(hand) {
-  const rankOrder = '23456789TJQKA';
-  const ranks = hand.map(card => rankOrder.indexOf(card.value)).sort((a, b) => b - a);
-  const suits = hand.map(card => card.suit);
-  const isFlush = new Set(suits).size === 1;
-  const isStraight = ranks[0] - ranks[4] === 4 && new Set(ranks).size === 5;
-  const rankCounts = ranks.reduce((acc, rank) => {
-    acc[rank] = (acc[rank] || 0) + 1;
-    return acc;
-  }, {});
-
-  const sortedCounts = Object.values(rankCounts).sort((a, b) => b - a);
-  const highestRank = Math.max(...ranks);
-  
-  return {
-    isFlush,
-    isStraight,
-    sortedCounts,
-    highestRank,
-    rankValues: ranks
-  };
-}
-
-function compareHands(hand1, hand2) {
-  const hand1Rank = rankHand(hand1);
-  const hand2Rank = rankHand(hand2);
-
-  // Compare by hand rank
-  const handRankOrder = [
-    ['isFlush', 'isStraight', 5], // Straight Flush
-    ['sortedCounts', 4], // Four of a Kind
-    ['sortedCounts', 3], // Full House
-    ['isFlush', 4], // Flush
-    ['isStraight', 3], // Straight
-    ['sortedCounts', 2], // Three of a Kind
-    ['sortedCounts', 1], // Two Pair
-    ['sortedCounts', 0], // One Pair
-    ['highestRank', 0] // High Card
-  ];
-
-  for (const [key, type, rank] of handRankOrder) {
-    if (hand1Rank[key] !== hand2Rank[key]) {
-      return hand1Rank[key] > hand2Rank[key] ? 1 : -1;
-    }
-    if (key === 'sortedCounts') {
-      for (let i = 0; i < Math.min(hand1Rank[key].length, hand2Rank[key].length); i++) {
-        if (hand1Rank[key][i] !== hand2Rank[key][i]) {
-          return hand1Rank[key][i] > hand2Rank[key][i] ? 1 : -1;
-        }
-      }
-    } else if (key === 'highestRank') {
-      if (hand1Rank[key] !== hand2Rank[key]) {
-        return hand1Rank[key] > hand2Rank[key] ? 1 : -1;
-      }
-    }
-  }
-
-  return 0; // Hands are equal
-}
-
 
 function initGame() {
   const app = document.getElementById('app');
