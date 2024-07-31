@@ -1,41 +1,25 @@
-class Player {
-  constructor(name, money) {
-    this.name = name;
-    this.money = money;
-    this.hand = [];
-    this.currentBet = 0;
-  }
-
-  bet(amount) {
-    if (this.money >= amount) {
-      this.money -= amount;
-      this.currentBet += amount;
-      return amount;
-    } else {
-      throw new Error('Insufficient funds');
-    }
-  }
-
-  win(amount) {
-    this.money += amount;
-  }
-
-  clearBet() {
-    this.currentBet = 0;
+class Card {
+  constructor(value, suit) {
+    this.value = value;
+    this.suit = suit;
   }
 }
 
 class Deck {
   constructor() {
     this.cards = [];
-    const suits = ['hearts', 'diamonds', 'clubs', 'spades'];
-    const values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+    this.createDeck();
+    this.shuffle();
+  }
 
-    for (let suit of suits) {
-      for (let value of values) {
-        this.cards.push({ suit, value });
-      }
-    }
+  createDeck() {
+    const suits = ['Hearts', 'Diamonds', 'Clubs', 'Spades'];
+    const values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+    suits.forEach(suit => {
+      values.forEach(value => {
+        this.cards.push(new Card(value, suit));
+      });
+    });
   }
 
   shuffle() {
@@ -50,89 +34,60 @@ class Deck {
   }
 }
 
-function rankHand(hand) {
-  const cardValues = hand.map(card => cardValue(card));
-  const suits = hand.map(card => card.suit);
-  const uniqueValues = [...new Set(cardValues)];
-  const isFlush = new Set(suits).size === 1;
-  const isStraight = isConsecutive(cardValues.sort((a, b) => a - b));
-
-  const valueCounts = countValues(cardValues);
-  const isFourOfAKind = valueCounts.includes(4);
-  const isFullHouse = valueCounts.includes(3) && valueCounts.includes(2);
-  const isThreeOfAKind = valueCounts.includes(3);
-  const isTwoPair = valueCounts.filter(count => count === 2).length === 2;
-  const isOnePair = valueCounts.includes(2);
-
-  if (isStraight && isFlush) return { rank: 9, highCard: Math.max(...cardValues) }; // Straight Flush
-  if (isFourOfAKind) return { rank: 8, highCard: getFourOfAKindHighCard(cardValues) }; // Four of a Kind
-  if (isFullHouse) return { rank: 7, highCard: getFullHouseHighCard(cardValues) }; // Full House
-  if (isFlush) return { rank: 6, highCard: Math.max(...cardValues) }; // Flush
-  if (isStraight) return { rank: 5, highCard: Math.max(...cardValues) }; // Straight
-  if (isThreeOfAKind) return { rank: 4, highCard: getThreeOfAKindHighCard(cardValues) }; // Three of a Kind
-  if (isTwoPair) return { rank: 3, highCard: getTwoPairHighCard(cardValues) }; // Two Pair
-  if (isOnePair) return { rank: 2, highCard: getOnePairHighCard(cardValues) }; // One Pair
-  return { rank: 1, highCard: Math.max(...cardValues) }; // High Card
-}
-
-function cardValue(card) {
-  const values = { '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14 };
-  return values[card.value];
-}
-
-function isConsecutive(values) {
-  for (let i = 1; i < values.length; i++) {
-    if (values[i] !== values[i - 1] + 1) return false;
+class Player {
+  constructor(name, chips) {
+    this.name = name;
+    this.chips = chips;
+    this.hand = [];
+    this.currentBet = 0;
   }
-  return true;
+
+  bet(amount) {
+    if (amount > this.chips) throw new Error("Insufficient chips.");
+    this.chips -= amount;
+    this.currentBet += amount;
+  }
+
+  clearBet() {
+    this.currentBet = 0;
+  }
+
+  win(amount) {
+    this.chips += amount;
+  }
 }
 
-function countValues(values) {
-  const counts = {};
-  values.forEach(value => {
-    counts[value] = (counts[value] || 0) + 1;
-  });
-  return Object.values(counts);
+function drawCommunityCards() {
+  if (round === 0) { // Flop
+    drawFlop();
+    round++;
+  } else if (round === 1) { // Turn
+    drawTurn();
+    round++;
+  } else if (round === 2) { // River
+    drawRiver();
+    round++;
+    // End game after drawing the fifth card
+    endGame();
+  }
 }
 
-function getFourOfAKindHighCard(values) {
-  const counts = countValues(values);
-  return Math.max(...counts.filter(count => count === 4));
+function checkRoundEnd() {
+  if (allPlayersActed()) {
+    drawCommunityCards();
+  } else {
+    nextTurn();
+  }
 }
 
-function getFullHouseHighCard(values) {
-  const counts = countValues(values);
-  const threeOfAKind = Math.max(...counts.filter(count => count === 3));
-  const pair = Math.max(...counts.filter(count => count === 2));
-  return threeOfAKind * 15 + pair;
-}
-
-function getThreeOfAKindHighCard(values) {
-  const counts = countValues(values);
-  return Math.max(...counts.filter(count => count === 3));
-}
-
-function getTwoPairHighCard(values) {
-  const counts = countValues(values);
-  const pairs = counts.filter(count => count === 2).sort((a, b) => b - a);
-  return pairs[0] * 15 + pairs[1];
-}
-
-function getOnePairHighCard(values) {
-  const counts = countValues(values);
-  const pair = Math.max(...counts.filter(count => count === 2));
-  return pair;
-}
-
-function getHandRank(hand) {
-  return rankHand(hand);
-}
-
-function compareHands(hand1, hand2) {
-  const rank1 = getHandRank(hand1);
-  const rank2 = getHandRank(hand2);
-  if (rank1.rank !== rank2.rank) return rank2.rank - rank1.rank;
-  return rank2.highCard - rank1.highCard;
+function nextTurn() {
+  const currentPlayer = players[currentPlayerIndex];
+  if (currentPlayer === player) {
+    document.getElementById('call-btn').disabled = highestBet <= player.currentBet;
+    document.getElementById('raise-btn').disabled = false;
+  } else {
+    botAction(currentPlayer);
+  }
 }
 
 function initGame() {
@@ -156,6 +111,7 @@ function initGame() {
     </div>
   `;
 
+  // Initialize game state
   const username = localStorage.getItem('username');
   const player = new Player(username, 1000);
   const bot1 = new Player('Bot 1', 1000);
@@ -267,21 +223,6 @@ function initGame() {
     resetBets();
   }
 
-  function drawCommunityCards() {
-    if (round === 0) { // Flop
-      drawFlop();
-      round++;
-    } else if (round === 1) { // Turn
-      drawTurn();
-      round++;
-    } else if (round === 2) { // River
-      drawRiver();
-      round++;
-      // End game after drawing the fifth card
-      endGame();
-    }
-  }
-  
   function endGame() {
     // Determine the winner and update the pot
     determineWinner();
@@ -302,7 +243,7 @@ function initGame() {
       location.reload(); // Restart the game
     });
   }
-  
+
   function determineWinner() {
     const playerBestHand = [...player.hand, ...communityCards];
     const bot1BestHand = [...bot1.hand, ...communityCards];
@@ -326,7 +267,6 @@ function initGame() {
     bot1.clearBet();
     bot2.clearBet();
   }
-  
 
   function allPlayersActed() {
     return (
@@ -336,22 +276,12 @@ function initGame() {
     );
   }
 
-  function nextTurn() {
-    const currentPlayer = players[currentPlayerIndex];
-    if (currentPlayer === player) {
-      document.getElementById('call-btn').disabled = highestBet <= player.currentBet;
-      document.getElementById('raise-btn').disabled = false;
-    } else {
-      botAction(currentPlayer);
-    }
-  }
-
-  function checkRoundEnd() {
-    if (allPlayersActed()) {
-      drawCommunityCards();
-    } else {
-      nextTurn();
-    }
+  function startGame() {
+    // Deal initial hands
+    players.forEach(player => player.hand.push(deck.deal(), deck.deal()));
+    
+    // Initial round of betting
+    nextTurn();
   }
 
   document.getElementById('bet-btn').addEventListener('click', () => {
@@ -360,9 +290,10 @@ function initGame() {
       player.bet(betAmount);
       updatePot(betAmount);
       updateChat(`${player.name} bets $${betAmount}.`);
-      highestBet = betAmount;
+      currentBet = betAmount;
+      highestBet = Math.max(highestBet, betAmount);
       currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
-      nextTurn();
+      checkRoundEnd();
     } catch (error) {
       alert(error.message);
     }
@@ -376,7 +307,7 @@ function initGame() {
         updatePot(callAmount);
         updateChat(`${player.name} calls $${highestBet}.`);
         currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
-        nextTurn();
+        checkRoundEnd();
       } catch (error) {
         alert(error.message);
       }
@@ -393,7 +324,7 @@ function initGame() {
       updateChat(`${player.name} raises to $${raiseAmount}.`);
       highestBet = raiseAmount;
       currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
-      nextTurn();
+      checkRoundEnd();
     } catch (error) {
       alert(error.message);
     }
@@ -402,19 +333,15 @@ function initGame() {
   document.getElementById('pass-btn').addEventListener('click', () => {
     updateChat(`${player.name} passes.`);
     currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
-    nextTurn();
+    checkRoundEnd();
   });
 
   document.getElementById('fold-btn').addEventListener('click', () => {
     updateChat(`${player.name} folds.`);
-    endGame(player);
+    endGame();
   });
 
-  function endGame(player) {
-    determineWinner();
-  }
-
-  drawCommunityCards(); // Initial draw for community cards
+  startGame(); // Start the game
 }
 
-window.initGame = initGame;
+document.addEventListener('DOMContentLoaded', initGame);
