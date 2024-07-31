@@ -21,3 +21,11 @@ function initLeaderboard() {
     initDashboard();
   });
 }
+
+function updateLeaderboard(username, score) {
+  let leaderboard = JSON.parse(localStorage.getItem('leaderboard')) || [];
+  leaderboard.push({ username, score });
+  leaderboard = leaderboard.sort((a, b) => b.score - a.score).slice(0, 10);
+  localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
+}
+

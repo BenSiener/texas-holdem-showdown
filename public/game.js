@@ -45,38 +45,63 @@ function initGame() {
   app.innerHTML = `
     <h1>Texas Hold'em Showdown</h1>
     <div id="game-area">
-      <!-- Game UI goes here -->
-      <button id="bet-btn">Bet</button>
-      <button id="call-btn">Call</button>
-      <button id="pass-btn">Pass</button>
-      <button id="fold-btn">Fold</button>
+      <div id="player-hand"></div>
+      <div id="bot1-hand"></div>
+      <div id="bot2-hand"></div>
+      <div id="game-buttons">
+        <button id="bet-btn">Bet</button>
+        <button id="call-btn">Call</button>
+        <button id="pass-btn">Pass</button>
+        <button id="fold-btn">Fold</button>
+      </div>
     </div>
   `;
 
-  const player = new Player(localStorage.getItem('username'), 1000);
+  const username = localStorage.getItem('username');
+  const player = new Player(username, 1000);
   const bot1 = new Player('Bot 1', 1000);
   const bot2 = new Player('Bot 2', 1000);
 
   const deck = new Deck();
   deck.shuffle();
 
-  // Implement the game logic
+  // Deal initial hands
+  player.hand.push(deck.deal(), deck.deal());
+  bot1.hand.push(deck.deal(), deck.deal());
+  bot2.hand.push(deck.deal(), deck.deal());
 
+  // Display hands
+  document.getElementById('player-hand').innerText = `${player.name}'s Hand: ${player.hand.map(card => `${card.value} of ${card.suit}`).join(', ')}`;
+  document.getElementById('bot1-hand').innerText = `${bot1.name}'s Hand: ${bot1.hand.map(card => `${card.value} of ${card.suit}`).join(', ')}`;
+  document.getElementById('bot2-hand').innerText = `${bot2.name}'s Hand: ${bot2.hand.map(card => `${card.value} of ${card.suit}`).join(', ')}`;
+
+  // Implement the game logic
   document.getElementById('bet-btn').addEventListener('click', () => {
     // Implement bet logic
+    console.log(`${player.name} bets.`);
   });
 
   document.getElementById('call-btn').addEventListener('click', () => {
     // Implement call logic
+    console.log(`${player.name} calls.`);
   });
 
   document.getElementById('pass-btn').addEventListener('click', () => {
     // Implement pass logic
+    console.log(`${player.name} passes.`);
   });
 
   document.getElementById('fold-btn').addEventListener('click', () => {
     // Implement fold logic
+    console.log(`${player.name} folds.`);
+    endGame(player);
   });
+
+  // Example game end logic to update the leaderboard
+  function endGame(player) {
+    updateLeaderboard(player.name, player.money);
+    initLeaderboard();
+  }
 }
 
 window.initGame = initGame;
