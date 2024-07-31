@@ -145,6 +145,7 @@ function initGame() {
       <div id="bot2-hand"></div>
       <div id="community-cards"></div>
       <div id="chat"></div>
+      <div id="pot">Pot: $0</div>
       <div id="game-buttons">
         <button id="bet-btn">Bet</button>
         <button id="call-btn">Call</button>
@@ -162,26 +163,26 @@ function initGame() {
   const deck = new Deck();
   deck.shuffle();
 
-  // Deal initial hands
-  player.hand.push(deck.deal(), deck.deal());
-  bot1.hand.push(deck.deal(), deck.deal());
-  bot2.hand.push(deck.deal(), deck.deal());
-
-  // Display player hand only
-  document.getElementById('player-hand').innerText = `${player.name}'s Hand: ${player.hand.map(card => `${card.value} of ${card.suit}`).join(', ')}`;
-
   const communityCards = [];
   const chatBox = document.getElementById('chat');
+  const potElement = document.getElementById('pot');
+  let pot = 0;
 
   function updateChat(message) {
     chatBox.innerHTML += `<p>${message}</p>`;
     chatBox.scrollTop = chatBox.scrollHeight; // Auto-scroll to the bottom
   }
 
+  function updatePot(amount) {
+    pot += amount;
+    potElement.innerText = `Pot: $${pot}`;
+  }
+
   function botBet(bot, betAmount) {
     if (betAmount > 0) {
       bot.bet(betAmount);
-      updateChat(`${bot.name} bets ${betAmount}.`);
+      updatePot(betAmount);
+      updateChat(`${bot.name} bets $${betAmount}.`);
     }
   }
 
@@ -189,7 +190,8 @@ function initGame() {
     const callAmount = currentBet - bot.currentBet;
     if (callAmount > 0) {
       bot.bet(callAmount);
-      updateChat(`${bot.name} calls with ${callAmount}.`);
+      updatePot(callAmount);
+      updateChat(`${bot.name} calls with $${callAmount}.`);
     } else {
       updateChat(`${bot.name} does not need to call.`);
     }
@@ -223,8 +225,9 @@ function initGame() {
 
   function bettingRound() {
     // Example logic: Bots bet randomly within a reasonable range
-    botBet(bot1, Math.random() * 100 + 50);
-    botBet(bot2, Math.random() * 100 + 50);
+    const currentBet = Math.max(player.currentBet, bot1.currentBet, bot2.currentBet);
+    botBet(bot1, Math.random() * (200 - currentBet) + currentBet);
+    botBet(bot2, Math.random() * (200 - currentBet) + currentBet);
   }
 
   function determineWinner() {
@@ -240,13 +243,16 @@ function initGame() {
       winner = bot2;
     }
 
-    winner.win(player.currentBet + bot1.currentBet + bot2.currentBet);
-    updateChat(`${winner.name} wins the round!`);
+    winner.win(pot);
+    updateChat(`${winner.name} wins the round with a pot of $${pot}!`);
 
-    updateLeaderboard(player.name, player.money);
+    // Reset pot and bets
+    pot = 0;
+    updatePot(pot);
     player.clearBet();
     bot1.clearBet();
     bot2.clearBet();
+
     initLeaderboard();
   }
 
@@ -254,7 +260,8 @@ function initGame() {
     const betAmount = parseInt(prompt('Enter bet amount:', '100'), 10);
     try {
       player.bet(betAmount);
-      updateChat(`${player.name} bets ${betAmount}.`);
+      updatePot(betAmount);
+      updateChat(`${player.name} bets $${betAmount}.`);
       botBet(bot1, betAmount);
       botBet(bot2, betAmount);
       drawFlop();
@@ -270,7 +277,8 @@ function initGame() {
     if (callAmount > 0) {
       try {
         player.bet(callAmount);
-        updateChat(`${player.name} calls with ${callAmount}.`);
+        updatePot(callAmount);
+        updateChat(`${player.name} calls with $${callAmount}.`);
         botCall(bot1, currentBet);
         botCall(bot2, currentBet);
         drawTurn();
@@ -295,8 +303,7 @@ function initGame() {
   });
 
   function endGame(player) {
-    updateLeaderboard(player.name, player.money);
-    initLeaderboard();
+    determineWinner();
   }
 }
 
