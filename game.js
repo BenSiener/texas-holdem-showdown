@@ -148,8 +148,7 @@ function initGame() {
       <div id="pot">Pot: $0</div>
       <div id="game-buttons">
         <button id="bet-btn">Bet</button>
-        <button id="call-btn" disabled>Call</button>
-        <button id="raise-btn" disabled>Raise</button>
+        <button id="call-btn">Call</button>
         <button id="pass-btn">Pass</button>
         <button id="fold-btn">Fold</button>
       </div>
@@ -168,11 +167,6 @@ function initGame() {
   const chatBox = document.getElementById('chat');
   const potElement = document.getElementById('pot');
   let pot = 0;
-  let round = 0;
-  let currentBet = 0;
-  let highestBet = 0;
-  let players = [player, bot1, bot2];
-  let currentPlayerIndex = 0;
 
   function updateChat(message) {
     chatBox.innerHTML += `<p>${message}</p>`;
@@ -184,21 +178,20 @@ function initGame() {
     potElement.innerText = `Pot: $${pot}`;
   }
 
-  function botBet(bot) {
-    const betAmount = Math.floor(Math.random() * 100) + 1;
-    bot.bet(betAmount);
-    updatePot(betAmount);
-    updateChat(`${bot.name} bets $${betAmount}.`);
-    currentBet = betAmount;
-    highestBet = Math.max(highestBet, betAmount);
+  function botBet(bot, betAmount) {
+    if (betAmount > 0) {
+      bot.bet(betAmount);
+      updatePot(betAmount);
+      updateChat(`${bot.name} bets $${betAmount}.`);
+    }
   }
 
-  function botCall(bot) {
-    const callAmount = highestBet - bot.currentBet;
+  function botCall(bot, currentBet) {
+    const callAmount = currentBet - bot.currentBet;
     if (callAmount > 0) {
       bot.bet(callAmount);
       updatePot(callAmount);
-      updateChat(`${bot.name} calls $${highestBet}.`);
+      updateChat(`${bot.name} calls with $${callAmount}.`);
     } else {
       updateChat(`${bot.name} does not need to call.`);
     }
@@ -208,80 +201,33 @@ function initGame() {
     updateChat(`${bot.name} passes.`);
   }
 
-  function botRaise(bot) {
-    const raiseAmount = highestBet + Math.floor(Math.random() * 100) + 1;
-    bot.bet(raiseAmount);
-    updatePot(raiseAmount);
-    updateChat(`${bot.name} raises to $${raiseAmount}.`);
-    highestBet = raiseAmount;
-  }
-
   function botFold(bot) {
     updateChat(`${bot.name} folds.`);
-    players = players.filter(p => p !== bot);
-  }
-
-  function botAction(bot) {
-    if (highestBet === 0) {
-      const action = Math.random();
-      if (action < 0.3) {
-        botPass(bot);
-      } else if (action < 0.6) {
-        botBet(bot);
-      } else {
-        botFold(bot);
-      }
-    } else {
-      const action = Math.random();
-      if (action < 0.5) {
-        botCall(bot);
-      } else if (action < 0.8) {
-        botRaise(bot);
-      } else {
-        botFold(bot);
-      }
-    }
-    currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
-    if (currentPlayerIndex === 0) {
-      checkRoundEnd();
-    } else {
-      nextTurn();
-    }
   }
 
   function drawFlop() {
     communityCards.push(deck.deal(), deck.deal(), deck.deal());
     document.getElementById('community-cards').innerText = `Community Cards: ${communityCards.map(card => `${card.value} of ${card.suit}`).join(', ')}`;
-    resetBets();
+    bettingRound();
   }
 
   function drawTurn() {
     communityCards.push(deck.deal());
     document.getElementById('community-cards').innerText = `Community Cards: ${communityCards.map(card => `${card.value} of ${card.suit}`).join(', ')}`;
-    resetBets();
+    bettingRound();
   }
 
   function drawRiver() {
     communityCards.push(deck.deal());
     document.getElementById('community-cards').innerText = `Community Cards: ${communityCards.map(card => `${card.value} of ${card.suit}`).join(', ')}`;
-    resetBets();
+    bettingRound();
   }
 
-  function drawCommunityCards() {
-    round++;
-    if (round === 1) {
-      drawFlop();
-    } else if (round === 2) {
-      drawTurn();
-    } else if (round === 3) {
-      drawRiver();
-    }
-  }
-
-  function resetBets() {
-    currentBet = 0;
-    highestBet = 0;
-    players.forEach(player => player.clearBet());
+  function bettingRound() {
+    // Example logic: Bots bet randomly within a reasonable range
+    const currentBet = Math.max(player.currentBet, bot1.currentBet, bot2.currentBet);
+    botBet(bot1, Math.random() * (200 - currentBet) + currentBet);
+    botBet(bot2, Math.random() * (200 - currentBet) + currentBet);
   }
 
   function determineWinner() {
@@ -310,55 +256,32 @@ function initGame() {
     initLeaderboard();
   }
 
-  function allPlayersActed() {
-    return (
-      player.currentBet === highestBet &&
-      bot1.currentBet === highestBet &&
-      bot2.currentBet === highestBet
-    );
-  }
-
-  function nextTurn() {
-    const currentPlayer = players[currentPlayerIndex];
-    if (currentPlayer === player) {
-      document.getElementById('call-btn').disabled = highestBet <= player.currentBet;
-      document.getElementById('raise-btn').disabled = false;
-    } else {
-      botAction(currentPlayer);
-    }
-  }
-
-  function checkRoundEnd() {
-    if (allPlayersActed()) {
-      drawCommunityCards();
-    } else {
-      nextTurn();
-    }
-  }
-
   document.getElementById('bet-btn').addEventListener('click', () => {
     const betAmount = parseInt(prompt('Enter bet amount:', '100'), 10);
     try {
       player.bet(betAmount);
       updatePot(betAmount);
       updateChat(`${player.name} bets $${betAmount}.`);
-      highestBet = betAmount;
-      currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
-      nextTurn();
+      botBet(bot1, betAmount);
+      botBet(bot2, betAmount);
+      drawFlop();
     } catch (error) {
       alert(error.message);
     }
   });
 
   document.getElementById('call-btn').addEventListener('click', () => {
-    const callAmount = highestBet - player.currentBet;
+    const currentBet = Math.max(player.currentBet, bot1.currentBet, bot2.currentBet);
+    const callAmount = currentBet - player.currentBet;
+
     if (callAmount > 0) {
       try {
         player.bet(callAmount);
         updatePot(callAmount);
-        updateChat(`${player.name} calls $${highestBet}.`);
-        currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
-        nextTurn();
+        updateChat(`${player.name} calls with $${callAmount}.`);
+        botCall(bot1, currentBet);
+        botCall(bot2, currentBet);
+        drawTurn();
       } catch (error) {
         alert(error.message);
       }
@@ -367,24 +290,11 @@ function initGame() {
     }
   });
 
-  document.getElementById('raise-btn').addEventListener('click', () => {
-    const raiseAmount = parseInt(prompt('Enter raise amount:', '100'), 10);
-    try {
-      player.bet(raiseAmount);
-      updatePot(raiseAmount);
-      updateChat(`${player.name} raises to $${raiseAmount}.`);
-      highestBet = raiseAmount;
-      currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
-      nextTurn();
-    } catch (error) {
-      alert(error.message);
-    }
-  });
-
   document.getElementById('pass-btn').addEventListener('click', () => {
     updateChat(`${player.name} passes.`);
-    currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
-    nextTurn();
+    botPass(bot1);
+    botPass(bot2);
+    drawRiver();
   });
 
   document.getElementById('fold-btn').addEventListener('click', () => {
@@ -395,11 +305,6 @@ function initGame() {
   function endGame(player) {
     determineWinner();
   }
-
-  drawCommunityCards(); // Initial draw for community cards
 }
 
 window.initGame = initGame;
-
-
-
