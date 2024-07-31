@@ -184,14 +184,13 @@ function initGame() {
     potElement.innerText = `Pot: $${pot}`;
   }
 
-  function botBet(bot, betAmount) {
-    if (betAmount > 0) {
-      bot.bet(betAmount);
-      updatePot(betAmount);
-      updateChat(`${bot.name} bets $${betAmount}.`);
-      currentBet = betAmount;
-      highestBet = Math.max(highestBet, betAmount);
-    }
+  function botBet(bot) {
+    const betAmount = Math.floor(Math.random() * 100) + 1;
+    bot.bet(betAmount);
+    updatePot(betAmount);
+    updateChat(`${bot.name} bets $${betAmount}.`);
+    currentBet = betAmount;
+    highestBet = Math.max(highestBet, betAmount);
   }
 
   function botCall(bot) {
@@ -210,18 +209,37 @@ function initGame() {
   }
 
   function botRaise(bot) {
-    const raiseAmount = highestBet + Math.floor(Math.random() * 100);
-    botBet(bot, raiseAmount);
+    const raiseAmount = highestBet + Math.floor(Math.random() * 100) + 1;
+    bot.bet(raiseAmount);
+    updatePot(raiseAmount);
     updateChat(`${bot.name} raises to $${raiseAmount}.`);
+    highestBet = raiseAmount;
+  }
+
+  function botFold(bot) {
+    updateChat(`${bot.name} folds.`);
+    players = players.filter(p => p !== bot);
   }
 
   function botAction(bot) {
     if (highestBet === 0) {
-      botPass(bot);
-    } else if (Math.random() > 0.5) {
-      botCall(bot);
+      const action = Math.random();
+      if (action < 0.3) {
+        botPass(bot);
+      } else if (action < 0.6) {
+        botBet(bot);
+      } else {
+        botFold(bot);
+      }
     } else {
-      botRaise(bot);
+      const action = Math.random();
+      if (action < 0.5) {
+        botCall(bot);
+      } else if (action < 0.8) {
+        botRaise(bot);
+      } else {
+        botFold(bot);
+      }
     }
     currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
     if (currentPlayerIndex === 0) {
@@ -382,5 +400,6 @@ function initGame() {
 }
 
 window.initGame = initGame;
+
 
 
