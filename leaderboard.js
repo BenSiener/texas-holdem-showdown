@@ -28,4 +28,3 @@ function updateLeaderboard(username, score) {
   leaderboard = leaderboard.sort((a, b) => b.score - a.score).slice(0, 10);
   localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
 }
-
