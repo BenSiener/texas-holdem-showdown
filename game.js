@@ -173,9 +173,9 @@ function initGame() {
   const communityCards = [];
   const chatBox = document.getElementById('chat');
 
-  // Update chat
   function updateChat(message) {
     chatBox.innerHTML += `<p>${message}</p>`;
+    chatBox.scrollTop = chatBox.scrollHeight; // Auto-scroll to the bottom
   }
 
   function botBet(bot, betAmount) {
@@ -241,15 +241,12 @@ function initGame() {
     }
 
     winner.win(player.currentBet + bot1.currentBet + bot2.currentBet);
-
     updateChat(`${winner.name} wins the round!`);
 
     updateLeaderboard(player.name, player.money);
-
     player.clearBet();
     bot1.clearBet();
     bot2.clearBet();
-
     initLeaderboard();
   }
 
@@ -267,7 +264,7 @@ function initGame() {
   });
 
   document.getElementById('call-btn').addEventListener('click', () => {
-    const currentBet = Math.max(player.currentBet, bot1.currentBet, bot2.currentBet); // Assuming getCurrentBet logic
+    const currentBet = Math.max(player.currentBet, bot1.currentBet, bot2.currentBet);
     const callAmount = currentBet - player.currentBet;
 
     if (callAmount > 0) {
