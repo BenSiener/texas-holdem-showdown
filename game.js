@@ -268,27 +268,46 @@ function initGame() {
   }
 
   function drawCommunityCards() {
-    round++;
-    if (round === 1) {
+    if (round === 0) { // Flop
       drawFlop();
-    } else if (round === 2) {
+      round++;
+    } else if (round === 1) { // Turn
       drawTurn();
-    } else if (round === 3) {
+      round++;
+    } else if (round === 2) { // River
       drawRiver();
+      round++;
+      // End game after drawing the fifth card
+      endGame();
     }
   }
-
-  function resetBets() {
-    currentBet = 0;
-    highestBet = 0;
-    players.forEach(player => player.clearBet());
+  
+  function endGame() {
+    // Determine the winner and update the pot
+    determineWinner();
+  
+    // Display the end screen
+    const app = document.getElementById('app');
+    app.innerHTML += `
+      <div id="end-screen">
+        <h2>Game Over</h2>
+        <p>The game has ended.</p>
+        <p>Winner: ${winner.name}</p>
+        <p>Pot Amount: $${pot}</p>
+        <button id="restart-btn">Restart Game</button>
+      </div>
+    `;
+  
+    document.getElementById('restart-btn').addEventListener('click', () => {
+      location.reload(); // Restart the game
+    });
   }
-
+  
   function determineWinner() {
     const playerBestHand = [...player.hand, ...communityCards];
     const bot1BestHand = [...bot1.hand, ...communityCards];
     const bot2BestHand = [...bot2.hand, ...communityCards];
-
+  
     let winner = player;
     if (compareHands(playerBestHand, bot1BestHand) < 0) {
       winner = bot1;
@@ -296,19 +315,18 @@ function initGame() {
     if (compareHands(winner === player ? playerBestHand : bot1BestHand, bot2BestHand) < 0) {
       winner = bot2;
     }
-
+  
     winner.win(pot);
     updateChat(`${winner.name} wins the round with a pot of $${pot}!`);
-
+  
     // Reset pot and bets
     pot = 0;
     updatePot(pot);
     player.clearBet();
     bot1.clearBet();
     bot2.clearBet();
-
-    initLeaderboard();
   }
+  
 
   function allPlayersActed() {
     return (
@@ -400,4 +418,3 @@ function initGame() {
 }
 
 window.initGame = initGame;
-
