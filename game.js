@@ -168,6 +168,7 @@ function initGame() {
   const potElement = document.getElementById('pot');
   let pot = 0;
   let round = 0; // Add round variable to track the current round
+  let currentBet = 0;
 
   function updateChat(message) {
     chatBox.innerHTML += `<p>${message}</p>`;
@@ -184,10 +185,11 @@ function initGame() {
       bot.bet(betAmount);
       updatePot(betAmount);
       updateChat(`${bot.name} bets $${betAmount}.`);
+      currentBet = betAmount;
     }
   }
 
-  function botCall(bot, currentBet) {
+  function botCall(bot) {
     const callAmount = currentBet - bot.currentBet;
     if (callAmount > 0) {
       bot.bet(callAmount);
@@ -202,26 +204,45 @@ function initGame() {
     updateChat(`${bot.name} passes.`);
   }
 
-  function botFold(bot) {
-    updateChat(`${bot.name} folds.`);
+  function botAction(bot) {
+    if (currentBet === 0) {
+      botPass(bot);
+    } else {
+      const callAmount = currentBet - bot.currentBet;
+      if (Math.random() > 0.5) {
+        botCall(bot);
+      } else {
+        const raiseAmount = callAmount + Math.floor(Math.random() * 100);
+        botBet(bot, raiseAmount);
+      }
+    }
   }
 
   function drawFlop() {
     communityCards.push(deck.deal(), deck.deal(), deck.deal());
     document.getElementById('community-cards').innerText = `Community Cards: ${communityCards.map(card => `${card.value} of ${card.suit}`).join(', ')}`;
-    bettingRound();
+    currentBet = 0;
+    player.clearBet();
+    bot1.clearBet();
+    bot2.clearBet();
   }
 
   function drawTurn() {
     communityCards.push(deck.deal());
     document.getElementById('community-cards').innerText = `Community Cards: ${communityCards.map(card => `${card.value} of ${card.suit}`).join(', ')}`;
-    bettingRound();
+    currentBet = 0;
+    player.clearBet();
+    bot1.clearBet();
+    bot2.clearBet();
   }
 
   function drawRiver() {
     communityCards.push(deck.deal());
     document.getElementById('community-cards').innerText = `Community Cards: ${communityCards.map(card => `${card.value} of ${card.suit}`).join(', ')}`;
-    bettingRound();
+    currentBet = 0;
+    player.clearBet();
+    bot1.clearBet();
+    bot2.clearBet();
   }
 
   function drawCommunityCards() {
@@ -233,13 +254,6 @@ function initGame() {
     } else if (round === 3) {
       drawRiver();
     }
-  }
-
-  function bettingRound() {
-    // Example logic: Bots bet randomly within a reasonable range
-    const currentBet = Math.max(player.currentBet, bot1.currentBet, bot2.currentBet);
-    botBet(bot1, Math.random() * (200 - currentBet) + currentBet);
-    botBet(bot2, Math.random() * (200 - currentBet) + currentBet);
   }
 
   function determineWinner() {
@@ -268,32 +282,43 @@ function initGame() {
     initLeaderboard();
   }
 
+  function allPlayersActed() {
+    return (
+      player.currentBet === currentBet &&
+      bot1.currentBet === currentBet &&
+      bot2.currentBet === currentBet
+    );
+  }
+
   document.getElementById('bet-btn').addEventListener('click', () => {
     const betAmount = parseInt(prompt('Enter bet amount:', '100'), 10);
     try {
       player.bet(betAmount);
       updatePot(betAmount);
       updateChat(`${player.name} bets $${betAmount}.`);
-      botBet(bot1, betAmount);
-      botBet(bot2, betAmount);
-      drawCommunityCards(); // Draw community cards
+      currentBet = betAmount;
+      botAction(bot1);
+      botAction(bot2);
+      if (allPlayersActed()) {
+        drawCommunityCards();
+      }
     } catch (error) {
       alert(error.message);
     }
   });
 
   document.getElementById('call-btn').addEventListener('click', () => {
-    const currentBet = Math.max(player.currentBet, bot1.currentBet, bot2.currentBet);
     const callAmount = currentBet - player.currentBet;
-
     if (callAmount > 0) {
       try {
         player.bet(callAmount);
         updatePot(callAmount);
         updateChat(`${player.name} calls with $${callAmount}.`);
-        botCall(bot1, currentBet);
-        botCall(bot2, currentBet);
-        drawCommunityCards(); // Draw community cards
+        botCall(bot1);
+        botCall(bot2);
+        if (allPlayersActed()) {
+          drawCommunityCards();
+        }
       } catch (error) {
         alert(error.message);
       }
@@ -306,7 +331,9 @@ function initGame() {
     updateChat(`${player.name} passes.`);
     botPass(bot1);
     botPass(bot2);
-    drawCommunityCards(); // Draw community cards
+    if (allPlayersActed()) {
+      drawCommunityCards();
+    }
   });
 
   document.getElementById('fold-btn').addEventListener('click', () => {
@@ -320,4 +347,5 @@ function initGame() {
 }
 
 window.initGame = initGame;
+
 
