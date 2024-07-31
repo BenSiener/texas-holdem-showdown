@@ -57,40 +57,27 @@ class Player {
   }
 }
 
-let deck;
-let communityCards = [];
-let pot = 0;
-let highestBet = 0;
-let round = 0;
-let players = [];
-let currentPlayerIndex = 0;
-
-function drawFlop() {
-  communityCards.push(deck.deal(), deck.deal(), deck.deal());
-  document.getElementById('community-cards').innerText = `Community Cards: ${communityCards.map(card => `${card.value} of ${card.suit}`).join(', ')}`;
-  resetBets();
+function drawCommunityCards() {
+  if (round === 0) { // Flop
+    drawFlop();
+    round++;
+  } else if (round === 1) { // Turn
+    drawTurn();
+    round++;
+  } else if (round === 2) { // River
+    drawRiver();
+    round++;
+    // End game after drawing the fifth card
+    endGame();
+  }
 }
 
-function drawTurn() {
-  communityCards.push(deck.deal());
-  document.getElementById('community-cards').innerText = `Community Cards: ${communityCards.map(card => `${card.value} of ${card.suit}`).join(', ')}`;
-  resetBets();
-}
-
-function drawRiver() {
-  communityCards.push(deck.deal());
-  document.getElementById('community-cards').innerText = `Community Cards: ${communityCards.map(card => `${card.value} of ${card.suit}`).join(', ')}`;
-  resetBets();
-}
-
-function resetBets() {
-  players.forEach(player => player.clearBet());
-  highestBet = 0;
-  currentBet = 0;
-}
-
-function allPlayersActed() {
-  return players.every(player => player.currentBet === highestBet);
+function checkRoundEnd() {
+  if (allPlayersActed()) {
+    drawCommunityCards();
+  } else {
+    nextTurn();
+  }
 }
 
 function nextTurn() {
@@ -103,161 +90,199 @@ function nextTurn() {
   }
 }
 
-function botBet(bot) {
-  const betAmount = Math.floor(Math.random() * 100) + 1;
-  bot.bet(betAmount);
-  updatePot(betAmount);
-  updateChat(`${bot.name} bets $${betAmount}.`);
-  currentBet = betAmount;
-  highestBet = Math.max(highestBet, betAmount);
-}
-
-function botCall(bot) {
-  const callAmount = highestBet - bot.currentBet;
-  if (callAmount > 0) {
-    bot.bet(callAmount);
-    updatePot(callAmount);
-    updateChat(`${bot.name} calls $${highestBet}.`);
-  } else {
-    updateChat(`${bot.name} does not need to call.`);
-  }
-}
-
-function botPass(bot) {
-  updateChat(`${bot.name} passes.`);
-}
-
-function botRaise(bot) {
-  const raiseAmount = highestBet + Math.floor(Math.random() * 100) + 1;
-  bot.bet(raiseAmount);
-  updatePot(raiseAmount);
-  updateChat(`${bot.name} raises to $${raiseAmount}.`);
-  highestBet = raiseAmount;
-}
-
-function botFold(bot) {
-  updateChat(`${bot.name} folds.`);
-  players = players.filter(p => p !== bot);
-}
-
-function botAction(bot) {
-  if (highestBet === 0) {
-    const action = Math.random();
-    if (action < 0.3) {
-      botPass(bot);
-    } else if (action < 0.6) {
-      botBet(bot);
-    } else {
-      botFold(bot);
-    }
-  } else {
-    const action = Math.random();
-    if (action < 0.5) {
-      botCall(bot);
-    } else if (action < 0.8) {
-      botRaise(bot);
-    } else {
-      botFold(bot);
-    }
-  }
-  currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
-  if (currentPlayerIndex === 0) {
-    checkRoundEnd();
-  } else {
-    nextTurn();
-  }
-}
-
-function checkRoundEnd() {
-  if (allPlayersActed()) {
-    drawCommunityCards();
-  } else {
-    nextTurn();
-  }
-}
-
-function updateChat(message) {
-  const chatBox = document.getElementById('chat');
-  chatBox.innerHTML += `<p>${message}</p>`;
-  chatBox.scrollTop = chatBox.scrollHeight; // Auto-scroll to the bottom
-}
-
-function updatePot(amount) {
-  pot += amount;
-  document.getElementById('pot').innerText = `Pot: $${pot}`;
-}
-
-function determineWinner() {
-  const playerBestHand = [...player.hand, ...communityCards];
-  const bot1BestHand = [...bot1.hand, ...communityCards];
-  const bot2BestHand = [...bot2.hand, ...communityCards];
-
-  let winner = player;
-  if (compareHands(playerBestHand, bot1BestHand) < 0) {
-    winner = bot1;
-  }
-  if (compareHands(winner === player ? playerBestHand : bot1BestHand, bot2BestHand) < 0) {
-    winner = bot2;
-  }
-
-  winner.win(pot);
-  updateChat(`${winner.name} wins the round with a pot of $${pot}!`);
-
-  // Reset pot and bets
-  pot = 0;
-  updatePot(pot);
-  player.clearBet();
-  bot1.clearBet();
-  bot2.clearBet();
-}
-
-function compareHands(hand1, hand2) {
-
-  return 0;
-}
-
-function endGame() {
-  // Determine the winner and update the pot
-  determineWinner();
-
-  // Display the end screen
+function initGame() {
   const app = document.getElementById('app');
-  app.innerHTML += `
-    <div id="end-screen">
-      <h2>Game Over</h2>
-      <p>The game has ended.</p>
-      <p>Winner: ${winner.name}</p>
-      <p>Pot Amount: $${pot}</p>
-      <button id="restart-btn">Restart Game</button>
+  app.innerHTML = `
+    <h1>Texas Hold'em Showdown</h1>
+    <div id="game-area">
+      <div id="player-hand"></div>
+      <div id="bot1-hand"></div>
+      <div id="bot2-hand"></div>
+      <div id="community-cards"></div>
+      <div id="chat"></div>
+      <div id="pot">Pot: $0</div>
+      <div id="game-buttons">
+        <button id="bet-btn">Bet</button>
+        <button id="call-btn" disabled>Call</button>
+        <button id="raise-btn" disabled>Raise</button>
+        <button id="pass-btn">Pass</button>
+        <button id="fold-btn">Fold</button>
+      </div>
     </div>
   `;
 
-  document.getElementById('restart-btn').addEventListener('click', () => {
-    location.reload(); // Restart the game
-  });
-}
-
-function startGame() {
-  deck = new Deck();
-  deck.shuffle();
-
-  // Create player and bots
+  // Initialize game state
   const username = localStorage.getItem('username');
   const player = new Player(username, 1000);
   const bot1 = new Player('Bot 1', 1000);
   const bot2 = new Player('Bot 2', 1000);
 
-  players = [player, bot1, bot2];
+  const deck = new Deck();
+  deck.shuffle();
 
-  // Deal initial hands
-  players.forEach(player => player.hand.push(deck.deal(), deck.deal()));
+  const communityCards = [];
+  const chatBox = document.getElementById('chat');
+  const potElement = document.getElementById('pot');
+  let pot = 0;
+  let round = 0;
+  let currentBet = 0;
+  let highestBet = 0;
+  let players = [player, bot1, bot2];
+  let currentPlayerIndex = 0;
 
-  // Initial round of betting
-  nextTurn();
-}
+  function updateChat(message) {
+    chatBox.innerHTML += `<p>${message}</p>`;
+    chatBox.scrollTop = chatBox.scrollHeight; // Auto-scroll to the bottom
+  }
 
-document.addEventListener('DOMContentLoaded', () => {
-  startGame();
+  function updatePot(amount) {
+    pot += amount;
+    potElement.innerText = `Pot: $${pot}`;
+  }
+
+  function botBet(bot) {
+    const betAmount = Math.floor(Math.random() * 100) + 1;
+    bot.bet(betAmount);
+    updatePot(betAmount);
+    updateChat(`${bot.name} bets $${betAmount}.`);
+    currentBet = betAmount;
+    highestBet = Math.max(highestBet, betAmount);
+  }
+
+  function botCall(bot) {
+    const callAmount = highestBet - bot.currentBet;
+    if (callAmount > 0) {
+      bot.bet(callAmount);
+      updatePot(callAmount);
+      updateChat(`${bot.name} calls $${highestBet}.`);
+    } else {
+      updateChat(`${bot.name} does not need to call.`);
+    }
+  }
+
+  function botPass(bot) {
+    updateChat(`${bot.name} passes.`);
+  }
+
+  function botRaise(bot) {
+    const raiseAmount = highestBet + Math.floor(Math.random() * 100) + 1;
+    bot.bet(raiseAmount);
+    updatePot(raiseAmount);
+    updateChat(`${bot.name} raises to $${raiseAmount}.`);
+    highestBet = raiseAmount;
+  }
+
+  function botFold(bot) {
+    updateChat(`${bot.name} folds.`);
+    players = players.filter(p => p !== bot);
+  }
+
+  function botAction(bot) {
+    if (highestBet === 0) {
+      const action = Math.random();
+      if (action < 0.3) {
+        botPass(bot);
+      } else if (action < 0.6) {
+        botBet(bot);
+      } else {
+        botFold(bot);
+      }
+    } else {
+      const action = Math.random();
+      if (action < 0.5) {
+        botCall(bot);
+      } else if (action < 0.8) {
+        botRaise(bot);
+      } else {
+        botFold(bot);
+      }
+    }
+    currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+    if (currentPlayerIndex === 0) {
+      checkRoundEnd();
+    } else {
+      nextTurn();
+    }
+  }
+
+  function drawFlop() {
+    communityCards.push(deck.deal(), deck.deal(), deck.deal());
+    document.getElementById('community-cards').innerText = `Community Cards: ${communityCards.map(card => `${card.value} of ${card.suit}`).join(', ')}`;
+    resetBets();
+  }
+
+  function drawTurn() {
+    communityCards.push(deck.deal());
+    document.getElementById('community-cards').innerText = `Community Cards: ${communityCards.map(card => `${card.value} of ${card.suit}`).join(', ')}`;
+    resetBets();
+  }
+
+  function drawRiver() {
+    communityCards.push(deck.deal());
+    document.getElementById('community-cards').innerText = `Community Cards: ${communityCards.map(card => `${card.value} of ${card.suit}`).join(', ')}`;
+    resetBets();
+  }
+
+  function endGame() {
+    // Determine the winner and update the pot
+    determineWinner();
+  
+    // Display the end screen
+    const app = document.getElementById('app');
+    app.innerHTML += `
+      <div id="end-screen">
+        <h2>Game Over</h2>
+        <p>The game has ended.</p>
+        <p>Winner: ${winner.name}</p>
+        <p>Pot Amount: $${pot}</p>
+        <button id="restart-btn">Restart Game</button>
+      </div>
+    `;
+  
+    document.getElementById('restart-btn').addEventListener('click', () => {
+      location.reload(); // Restart the game
+    });
+  }
+
+  function determineWinner() {
+    const playerBestHand = [...player.hand, ...communityCards];
+    const bot1BestHand = [...bot1.hand, ...communityCards];
+    const bot2BestHand = [...bot2.hand, ...communityCards];
+  
+    let winner = player;
+    if (compareHands(playerBestHand, bot1BestHand) < 0) {
+      winner = bot1;
+    }
+    if (compareHands(winner === player ? playerBestHand : bot1BestHand, bot2BestHand) < 0) {
+      winner = bot2;
+    }
+  
+    winner.win(pot);
+    updateChat(`${winner.name} wins the round with a pot of $${pot}!`);
+  
+    // Reset pot and bets
+    pot = 0;
+    updatePot(pot);
+    player.clearBet();
+    bot1.clearBet();
+    bot2.clearBet();
+  }
+
+  function allPlayersActed() {
+    return (
+      player.currentBet === highestBet &&
+      bot1.currentBet === highestBet &&
+      bot2.currentBet === highestBet
+    );
+  }
+
+  function startGame() {
+    // Deal initial hands
+    players.forEach(player => player.hand.push(deck.deal(), deck.deal()));
+    
+    // Initial round of betting
+    nextTurn();
+  }
 
   document.getElementById('bet-btn').addEventListener('click', () => {
     const betAmount = parseInt(prompt('Enter bet amount:', '100'), 10);
@@ -315,4 +340,8 @@ document.addEventListener('DOMContentLoaded', () => {
     updateChat(`${player.name} folds.`);
     endGame();
   });
-});
+
+  startGame(); // Start the game
+}
+
+document.addEventListener('DOMContentLoaded', initGame);
