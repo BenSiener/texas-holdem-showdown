@@ -51,14 +51,12 @@ class Deck {
 }
 
 function rankHand(hand) {
-  // Sort hand by card value
   const cardValues = hand.map(card => cardValue(card));
   const suits = hand.map(card => card.suit);
   const uniqueValues = [...new Set(cardValues)];
   const isFlush = new Set(suits).size === 1;
   const isStraight = isConsecutive(cardValues.sort((a, b) => a - b));
 
-  // Determine hand rank
   const valueCounts = countValues(cardValues);
   const isFourOfAKind = valueCounts.includes(4);
   const isFullHouse = valueCounts.includes(3) && valueCounts.includes(2);
@@ -126,11 +124,15 @@ function getOnePairHighCard(values) {
   return pair;
 }
 
+function getHandRank(hand) {
+  return rankHand(hand);
+}
 
 function compareHands(hand1, hand2) {
   const rank1 = getHandRank(hand1);
   const rank2 = getHandRank(hand2);
-  return rank1 - rank2;
+  if (rank1.rank !== rank2.rank) return rank2.rank - rank1.rank;
+  return rank2.highCard - rank1.highCard;
 }
 
 function initGame() {
@@ -142,6 +144,7 @@ function initGame() {
       <div id="bot1-hand"></div>
       <div id="bot2-hand"></div>
       <div id="community-cards"></div>
+      <div id="chat"></div>
       <div id="game-buttons">
         <button id="bet-btn">Bet</button>
         <button id="call-btn">Call</button>
@@ -166,39 +169,65 @@ function initGame() {
 
   // Display player hand only
   document.getElementById('player-hand').innerText = `${player.name}'s Hand: ${player.hand.map(card => `${card.value} of ${card.suit}`).join(', ')}`;
-  
-  // Initialize community cards
+
   const communityCards = [];
+  const chatBox = document.getElementById('chat');
 
-  // Betting rounds
-  const bettingRound = () => {
-    // Implement bot betting logic here
-    console.log(`${player.name} bets.`);
-  };
+  // Update chat
+  function updateChat(message) {
+    chatBox.innerHTML += `<p>${message}</p>`;
+  }
 
-  // Draw the flop (3 community cards)
-  const drawFlop = () => {
+  function botBet(bot, betAmount) {
+    if (betAmount > 0) {
+      bot.bet(betAmount);
+      updateChat(`${bot.name} bets ${betAmount}.`);
+    }
+  }
+
+  function botCall(bot, currentBet) {
+    const callAmount = currentBet - bot.currentBet;
+    if (callAmount > 0) {
+      bot.bet(callAmount);
+      updateChat(`${bot.name} calls with ${callAmount}.`);
+    } else {
+      updateChat(`${bot.name} does not need to call.`);
+    }
+  }
+
+  function botPass(bot) {
+    updateChat(`${bot.name} passes.`);
+  }
+
+  function botFold(bot) {
+    updateChat(`${bot.name} folds.`);
+  }
+
+  function drawFlop() {
     communityCards.push(deck.deal(), deck.deal(), deck.deal());
     document.getElementById('community-cards').innerText = `Community Cards: ${communityCards.map(card => `${card.value} of ${card.suit}`).join(', ')}`;
     bettingRound();
-  };
+  }
 
-  // Draw the turn (1 community card)
-  const drawTurn = () => {
+  function drawTurn() {
     communityCards.push(deck.deal());
     document.getElementById('community-cards').innerText = `Community Cards: ${communityCards.map(card => `${card.value} of ${card.suit}`).join(', ')}`;
     bettingRound();
-  };
+  }
 
-  // Draw the river (1 community card)
-  const drawRiver = () => {
+  function drawRiver() {
     communityCards.push(deck.deal());
     document.getElementById('community-cards').innerText = `Community Cards: ${communityCards.map(card => `${card.value} of ${card.suit}`).join(', ')}`;
     bettingRound();
-  };
+  }
 
-  // Determine the winner
-  const determineWinner = () => {
+  function bettingRound() {
+    // Example logic: Bots bet randomly within a reasonable range
+    botBet(bot1, Math.random() * 100 + 50);
+    botBet(bot2, Math.random() * 100 + 50);
+  }
+
+  function determineWinner() {
     const playerBestHand = [...player.hand, ...communityCards];
     const bot1BestHand = [...bot1.hand, ...communityCards];
     const bot2BestHand = [...bot2.hand, ...communityCards];
@@ -213,134 +242,61 @@ function initGame() {
 
     winner.win(player.currentBet + bot1.currentBet + bot2.currentBet);
 
-    // Update leaderboard
+    updateChat(`${winner.name} wins the round!`);
+
     updateLeaderboard(player.name, player.money);
 
-    // Reset bets
     player.clearBet();
     bot1.clearBet();
     bot2.clearBet();
 
-    // Show winner
-    alert(`${winner.name} wins the round!`);
     initLeaderboard();
-  };
-
-  function botBet(bot) {
-    // Simple bot betting logic based on hand rank
-    const handRank = getHandRank([...bot.hand, ...communityCards]);
-    const betAmount = handRank.rank >= 5 ? Math.random() * 100 + 50 : 0; // Bet more if hand rank is good
-    if (betAmount > 0) {
-      bot.bet(betAmount);
-      console.log(`${bot.name} bets ${betAmount}`);
-    }
   }
-  
+
   document.getElementById('bet-btn').addEventListener('click', () => {
     const betAmount = parseInt(prompt('Enter bet amount:', '100'), 10);
     try {
       player.bet(betAmount);
-      console.log(`${player.name} bets ${betAmount}`);
-      botBet(bot1);
-      botBet(bot2);
+      updateChat(`${player.name} bets ${betAmount}.`);
+      botBet(bot1, betAmount);
+      botBet(bot2, betAmount);
       drawFlop();
     } catch (error) {
       alert(error.message);
     }
   });
-  
 
-  document.getElementById('bet-btn').addEventListener('click', () => {
-    document.getElementById('bet-btn').addEventListener('click', () => {
-      // Get the bet amount from user input
-      const betAmount = parseInt(prompt('Enter bet amount:', '100'), 10);
-    
-      if (isNaN(betAmount) || betAmount <= 0) {
-        alert('Invalid bet amount. Please enter a positive number.');
-        return;
-      }
-    
+  document.getElementById('call-btn').addEventListener('click', () => {
+    const currentBet = Math.max(player.currentBet, bot1.currentBet, bot2.currentBet); // Assuming getCurrentBet logic
+    const callAmount = currentBet - player.currentBet;
+
+    if (callAmount > 0) {
       try {
-        // Implement bet logic
-        player.bet(betAmount);
-        console.log(`${player.name} bets ${betAmount}.`);
-        
-        // Bots place their bets
-        botBet(bot1, betAmount);
-        botBet(bot2, betAmount);
-    
-        // Draw the flop after betting
-        drawFlop();
+        player.bet(callAmount);
+        updateChat(`${player.name} calls with ${callAmount}.`);
+        botCall(bot1, currentBet);
+        botCall(bot2, currentBet);
+        drawTurn();
       } catch (error) {
         alert(error.message);
       }
-    });
-    
-    player.bet(100);
-    console.log(`${player.name} bets.`);
-    drawFlop();
-  });
-
-  document.getElementById('call-btn').addEventListener('click', () => {
-    document.getElementById('call-btn').addEventListener('click', () => {
-      const currentBet = getCurrentBet(); // Assuming you have a function to get the current bet
-      const callAmount = currentBet - player.currentBet;
-    
-      if (callAmount > 0) {
-        try {
-          // Implement call logic
-          player.bet(callAmount);
-          console.log(`${player.name} calls with ${callAmount}.`);
-          
-          // Bots call if necessary
-          botCall(bot1, currentBet);
-          botCall(bot2, currentBet);
-    
-          // Draw the turn after calling
-          drawTurn();
-        } catch (error) {
-          alert(error.message);
-        }
-      } else {
-        alert('You do not need to call.');
-      }
-    });
-    
-    console.log(`${player.name} calls.`);
-    drawTurn();
+    } else {
+      alert('You do not need to call.');
+    }
   });
 
   document.getElementById('pass-btn').addEventListener('click', () => {
-    document.getElementById('pass-btn').addEventListener('click', () => {
-      // Implement pass logic
-      console.log(`${player.name} passes.`);
-      
-      // Bots make their moves
-      botPass(bot1);
-      botPass(bot2);
-      
-      // Draw the river after passing
-      drawRiver();
-    });
-    
-    console.log(`${player.name} passes.`);
+    updateChat(`${player.name} passes.`);
+    botPass(bot1);
+    botPass(bot2);
     drawRiver();
   });
 
   document.getElementById('fold-btn').addEventListener('click', () => {
-    document.getElementById('fold-btn').addEventListener('click', () => {
-      // Implement fold logic
-      console.log(`${player.name} folds.`);
-      
-      // End the game for the player who folded
-      endGame(player);
-    });
-    
-    console.log(`${player.name} folds.`);
+    updateChat(`${player.name} folds.`);
     endGame(player);
   });
 
-  // Example game end logic to update the leaderboard
   function endGame(player) {
     updateLeaderboard(player.name, player.money);
     initLeaderboard();
