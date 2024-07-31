@@ -3,15 +3,25 @@ class Player {
     this.name = name;
     this.money = money;
     this.hand = [];
+    this.currentBet = 0;
   }
 
   bet(amount) {
-    this.money -= amount;
-    return amount;
+    if (this.money >= amount) {
+      this.money -= amount;
+      this.currentBet += amount;
+      return amount;
+    } else {
+      throw new Error('Insufficient funds');
+    }
   }
 
   win(amount) {
     this.money += amount;
+  }
+
+  clearBet() {
+    this.currentBet = 0;
   }
 }
 
@@ -40,6 +50,89 @@ class Deck {
   }
 }
 
+function rankHand(hand) {
+  // Sort hand by card value
+  const cardValues = hand.map(card => cardValue(card));
+  const suits = hand.map(card => card.suit);
+  const uniqueValues = [...new Set(cardValues)];
+  const isFlush = new Set(suits).size === 1;
+  const isStraight = isConsecutive(cardValues.sort((a, b) => a - b));
+
+  // Determine hand rank
+  const valueCounts = countValues(cardValues);
+  const isFourOfAKind = valueCounts.includes(4);
+  const isFullHouse = valueCounts.includes(3) && valueCounts.includes(2);
+  const isThreeOfAKind = valueCounts.includes(3);
+  const isTwoPair = valueCounts.filter(count => count === 2).length === 2;
+  const isOnePair = valueCounts.includes(2);
+
+  if (isStraight && isFlush) return { rank: 9, highCard: Math.max(...cardValues) }; // Straight Flush
+  if (isFourOfAKind) return { rank: 8, highCard: getFourOfAKindHighCard(cardValues) }; // Four of a Kind
+  if (isFullHouse) return { rank: 7, highCard: getFullHouseHighCard(cardValues) }; // Full House
+  if (isFlush) return { rank: 6, highCard: Math.max(...cardValues) }; // Flush
+  if (isStraight) return { rank: 5, highCard: Math.max(...cardValues) }; // Straight
+  if (isThreeOfAKind) return { rank: 4, highCard: getThreeOfAKindHighCard(cardValues) }; // Three of a Kind
+  if (isTwoPair) return { rank: 3, highCard: getTwoPairHighCard(cardValues) }; // Two Pair
+  if (isOnePair) return { rank: 2, highCard: getOnePairHighCard(cardValues) }; // One Pair
+  return { rank: 1, highCard: Math.max(...cardValues) }; // High Card
+}
+
+function cardValue(card) {
+  const values = { '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14 };
+  return values[card.value];
+}
+
+function isConsecutive(values) {
+  for (let i = 1; i < values.length; i++) {
+    if (values[i] !== values[i - 1] + 1) return false;
+  }
+  return true;
+}
+
+function countValues(values) {
+  const counts = {};
+  values.forEach(value => {
+    counts[value] = (counts[value] || 0) + 1;
+  });
+  return Object.values(counts);
+}
+
+function getFourOfAKindHighCard(values) {
+  const counts = countValues(values);
+  return Math.max(...counts.filter(count => count === 4));
+}
+
+function getFullHouseHighCard(values) {
+  const counts = countValues(values);
+  const threeOfAKind = Math.max(...counts.filter(count => count === 3));
+  const pair = Math.max(...counts.filter(count => count === 2));
+  return threeOfAKind * 15 + pair;
+}
+
+function getThreeOfAKindHighCard(values) {
+  const counts = countValues(values);
+  return Math.max(...counts.filter(count => count === 3));
+}
+
+function getTwoPairHighCard(values) {
+  const counts = countValues(values);
+  const pairs = counts.filter(count => count === 2).sort((a, b) => b - a);
+  return pairs[0] * 15 + pairs[1];
+}
+
+function getOnePairHighCard(values) {
+  const counts = countValues(values);
+  const pair = Math.max(...counts.filter(count => count === 2));
+  return pair;
+}
+
+
+function compareHands(hand1, hand2) {
+  const rank1 = getHandRank(hand1);
+  const rank2 = getHandRank(hand2);
+  return rank1 - rank2;
+}
+
 function initGame() {
   const app = document.getElementById('app');
   app.innerHTML = `
@@ -48,6 +141,7 @@ function initGame() {
       <div id="player-hand"></div>
       <div id="bot1-hand"></div>
       <div id="bot2-hand"></div>
+      <div id="community-cards"></div>
       <div id="game-buttons">
         <button id="bet-btn">Bet</button>
         <button id="call-btn">Call</button>
@@ -70,29 +164,178 @@ function initGame() {
   bot1.hand.push(deck.deal(), deck.deal());
   bot2.hand.push(deck.deal(), deck.deal());
 
-  // Display hands
+  // Display player hand only
   document.getElementById('player-hand').innerText = `${player.name}'s Hand: ${player.hand.map(card => `${card.value} of ${card.suit}`).join(', ')}`;
-  document.getElementById('bot1-hand').innerText = `${bot1.name}'s Hand: ${bot1.hand.map(card => `${card.value} of ${card.suit}`).join(', ')}`;
-  document.getElementById('bot2-hand').innerText = `${bot2.name}'s Hand: ${bot2.hand.map(card => `${card.value} of ${card.suit}`).join(', ')}`;
+  
+  // Initialize community cards
+  const communityCards = [];
 
-  // Implement the game logic
-  document.getElementById('bet-btn').addEventListener('click', () => {
-    // Implement bet logic
+  // Betting rounds
+  const bettingRound = () => {
+    // Implement bot betting logic here
     console.log(`${player.name} bets.`);
+  };
+
+  // Draw the flop (3 community cards)
+  const drawFlop = () => {
+    communityCards.push(deck.deal(), deck.deal(), deck.deal());
+    document.getElementById('community-cards').innerText = `Community Cards: ${communityCards.map(card => `${card.value} of ${card.suit}`).join(', ')}`;
+    bettingRound();
+  };
+
+  // Draw the turn (1 community card)
+  const drawTurn = () => {
+    communityCards.push(deck.deal());
+    document.getElementById('community-cards').innerText = `Community Cards: ${communityCards.map(card => `${card.value} of ${card.suit}`).join(', ')}`;
+    bettingRound();
+  };
+
+  // Draw the river (1 community card)
+  const drawRiver = () => {
+    communityCards.push(deck.deal());
+    document.getElementById('community-cards').innerText = `Community Cards: ${communityCards.map(card => `${card.value} of ${card.suit}`).join(', ')}`;
+    bettingRound();
+  };
+
+  // Determine the winner
+  const determineWinner = () => {
+    const playerBestHand = [...player.hand, ...communityCards];
+    const bot1BestHand = [...bot1.hand, ...communityCards];
+    const bot2BestHand = [...bot2.hand, ...communityCards];
+
+    let winner = player;
+    if (compareHands(playerBestHand, bot1BestHand) < 0) {
+      winner = bot1;
+    }
+    if (compareHands(winner === player ? playerBestHand : bot1BestHand, bot2BestHand) < 0) {
+      winner = bot2;
+    }
+
+    winner.win(player.currentBet + bot1.currentBet + bot2.currentBet);
+
+    // Update leaderboard
+    updateLeaderboard(player.name, player.money);
+
+    // Reset bets
+    player.clearBet();
+    bot1.clearBet();
+    bot2.clearBet();
+
+    // Show winner
+    alert(`${winner.name} wins the round!`);
+    initLeaderboard();
+  };
+
+  function botBet(bot) {
+    // Simple bot betting logic based on hand rank
+    const handRank = getHandRank([...bot.hand, ...communityCards]);
+    const betAmount = handRank.rank >= 5 ? Math.random() * 100 + 50 : 0; // Bet more if hand rank is good
+    if (betAmount > 0) {
+      bot.bet(betAmount);
+      console.log(`${bot.name} bets ${betAmount}`);
+    }
+  }
+  
+  document.getElementById('bet-btn').addEventListener('click', () => {
+    const betAmount = parseInt(prompt('Enter bet amount:', '100'), 10);
+    try {
+      player.bet(betAmount);
+      console.log(`${player.name} bets ${betAmount}`);
+      botBet(bot1);
+      botBet(bot2);
+      drawFlop();
+    } catch (error) {
+      alert(error.message);
+    }
+  });
+  
+
+  document.getElementById('bet-btn').addEventListener('click', () => {
+    document.getElementById('bet-btn').addEventListener('click', () => {
+      // Get the bet amount from user input
+      const betAmount = parseInt(prompt('Enter bet amount:', '100'), 10);
+    
+      if (isNaN(betAmount) || betAmount <= 0) {
+        alert('Invalid bet amount. Please enter a positive number.');
+        return;
+      }
+    
+      try {
+        // Implement bet logic
+        player.bet(betAmount);
+        console.log(`${player.name} bets ${betAmount}.`);
+        
+        // Bots place their bets
+        botBet(bot1, betAmount);
+        botBet(bot2, betAmount);
+    
+        // Draw the flop after betting
+        drawFlop();
+      } catch (error) {
+        alert(error.message);
+      }
+    });
+    
+    player.bet(100);
+    console.log(`${player.name} bets.`);
+    drawFlop();
   });
 
   document.getElementById('call-btn').addEventListener('click', () => {
-    // Implement call logic
+    document.getElementById('call-btn').addEventListener('click', () => {
+      const currentBet = getCurrentBet(); // Assuming you have a function to get the current bet
+      const callAmount = currentBet - player.currentBet;
+    
+      if (callAmount > 0) {
+        try {
+          // Implement call logic
+          player.bet(callAmount);
+          console.log(`${player.name} calls with ${callAmount}.`);
+          
+          // Bots call if necessary
+          botCall(bot1, currentBet);
+          botCall(bot2, currentBet);
+    
+          // Draw the turn after calling
+          drawTurn();
+        } catch (error) {
+          alert(error.message);
+        }
+      } else {
+        alert('You do not need to call.');
+      }
+    });
+    
     console.log(`${player.name} calls.`);
+    drawTurn();
   });
 
   document.getElementById('pass-btn').addEventListener('click', () => {
-    // Implement pass logic
+    document.getElementById('pass-btn').addEventListener('click', () => {
+      // Implement pass logic
+      console.log(`${player.name} passes.`);
+      
+      // Bots make their moves
+      botPass(bot1);
+      botPass(bot2);
+      
+      // Draw the river after passing
+      drawRiver();
+    });
+    
     console.log(`${player.name} passes.`);
+    drawRiver();
   });
 
   document.getElementById('fold-btn').addEventListener('click', () => {
-    // Implement fold logic
+    document.getElementById('fold-btn').addEventListener('click', () => {
+      // Implement fold logic
+      console.log(`${player.name} folds.`);
+      
+      // End the game for the player who folded
+      endGame(player);
+    });
+    
     console.log(`${player.name} folds.`);
     endGame(player);
   });
