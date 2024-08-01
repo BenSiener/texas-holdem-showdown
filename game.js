@@ -164,6 +164,21 @@ function initGame() {
   const deck = new Deck();
   deck.shuffle();
 
+  // Deal cards to the player
+  player.hand = [deck.deal(), deck.deal()];
+
+  // Display player hand
+  function updatePlayerHand() {
+    const playerHandElement = document.getElementById('player-hand');
+    playerHandElement.innerHTML = `
+      <h2>${player.name}'s Hand</h2>
+      <p>${player.hand.map(card => `${card.value} of ${card.suit}`).join(', ')}</p>
+    `;
+  }
+
+  // Call the function to update the player’s hand display
+  updatePlayerHand();
+
   const communityCards = [];
   const chatBox = document.getElementById('chat');
   const potElement = document.getElementById('pot');
@@ -418,3 +433,4 @@ function initGame() {
 }
 
 window.initGame = initGame;
+

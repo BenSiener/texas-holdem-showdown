@@ -45,3 +45,13 @@ input[type="text"], input[type="password"] {
 #game-buttons {
   margin-top: 20px;
 }
+
+#player-hand {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  border: 1px solid #ccc;
+  padding: 10px;
+  background-color: #f9f9f9;
+  z-index: 10;
+}
